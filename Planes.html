@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>Inversiones con Usuarios</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: linear-gradient(270deg, red, orange, yellow, green, blue, indigo, violet);
+      background-size: 1400% 1400%;
+      animation: arcoiris 15s ease infinite;
+      margin: 0;
+      padding: 20px;
+      color: #fff;
+    }
+    @keyframes arcoiris {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+
+    #dinero, #nivel {
+      font-size: 20px;
+      margin-bottom: 15px;
+    }
+
+    .inversiones {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 15px;
+    }
+
+    .inversion {
+      background: rgba(0,0,0,0.5);
+      border-radius: 10px;
+      padding: 10px 20px;
+      cursor: pointer;
+      text-align: center;
+      box-shadow: 0 0 10px #00ffcc;
+      user-select: none;
+      transition: background-color 0.3s ease;
+      white-space: pre-line;
+    }
+
+    .inversion:hover {
+      background-color: #00ffcc;
+      color: #000;
+    }
+
+    #loginBox {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.85);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 10000;
+    }
+
+    #loginBox div {
+      background: #111;
+      padding: 30px;
+      border-radius: 10px;
+      box-shadow: 0 0 15px #00ffcc;
+      text-align: center;
+    }
+
+    #loginBox input {
+      width: 100%;
+      margin: 10px 0;
+      padding: 8px;
+      border-radius: 5px;
+      border: none;
+    }
+
+    #loginBox button {
+      padding: 10px 20px;
+      border: none;
+      border-radius: 5px;
+      background-color: #00cc99;
+      font-weight: bold;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+
+  <div id="loginBox">
+    <div>
+      <h2>Ingresa tu usuario</h2>
+      <input type="text" id="nombreUsuario" placeholder="Usuario..." />
+      <button onclick="iniciarSesion()">Entrar</button>
+    </div>
+  </div>
+
+  <div id="dinero">Dinero: $0</div>
+  <div id="nivel">Nivel: 1</div>
+
+  <div class="inversiones" id="inversionesContainer"></div>
+
+<script>
+  let usuarioActivo = null;
+  let dinero = 0;
+  let nivel = 1;
+  let inversionesCompradas = {};
+  const inversiones = [
+    { precio: 50, nombre: 'Inversor 1' },
+    { precio: 100, nombre: 'Inversor 2' },
+    { precio: 200, nombre: 'Inversor 3' },
+    { precio: 300, nombre: 'Inversor 4' },
+    { precio: 500, nombre: 'Inversor 5' },
+    { precio: 800, nombre: 'Inversor 6' },
+    { precio: 1200, nombre: 'Inversor 7' },
+    { precio: 1500, nombre: 'Inversor 8' }
+  ];
+
+  const dineroElem = document.getElementById('dinero');
+  const nivelElem = document.getElementById('nivel');
+  const inversionesContainer = document.getElementById('inversionesContainer');
+  const intervalosGanancia = {};
+
+  function iniciarSesion() {
+    const input = document.getElementById('nombreUsuario');
+    const nombre = input.value.trim();
+    if (!nombre) {
+      alert('Escribe un nombre válido');
+      return;
+    }
+    usuarioActivo = nombre;
+    localStorage.setItem('usuarioActivo', usuarioActivo);
+    document.getElementById('loginBox').style.display = 'none';
+
+    cargarDatos();
+    actualizarInfo();
+    crearBotones();
+    iniciarTodasGanancias();
+  }
+
+  function cargarDatos() {
+    dinero = parseInt(localStorage.getItem(`dinero_${usuarioActivo}`)) || 0;
+    nivel = parseInt(localStorage.getItem(`nivel_${usuarioActivo}`)) || 1;
+    inversionesCompradas = JSON.parse(localStorage.getItem(`inversiones_${usuarioActivo}`)) || {};
+  }
+
+  function guardarDatos() {
+    localStorage.setItem(`dinero_${usuarioActivo}`, dinero);
+    localStorage.setItem(`nivel_${usuarioActivo}`, nivel);
+    localStorage.setItem(`inversiones_${usuarioActivo}`, JSON.stringify(inversionesCompradas));
+  }
+
+  function actualizarInfo() {
+    dineroElem.textContent = `Dinero: $${dinero}`;
+    nivelElem.textContent = `Nivel: ${nivel}`;
+  }
+
+  function crearBotones() {
+    inversionesContainer.innerHTML = '';
+    inversiones.forEach(inv => {
+      const btn = document.createElement('div');
+      btn.className = 'inversion';
+      const cantidad = inversionesCompradas[inv.precio] || 0;
+      btn.textContent = `${inv.nombre}\n$${inv.precio}\nComprados: ${cantidad}`;
+      btn.onclick = () => comprarInversion(inv.precio);
+      inversionesContainer.appendChild(btn);
+    });
+  }
+
+  function comprarInversion(precio) {
+    if (dinero >= precio) {
+      dinero -= precio;
+      inversionesCompradas[precio] = (inversionesCompradas[precio] || 0) + 1;
+      guardarDatos();
+      actualizarInfo();
+      crearBotones();
+      iniciarGananciaPorInversion(precio);
+    } else {
+      alert('No tienes suficiente dinero.');
+    }
+  }
+
+  function iniciarGananciaPorInversion(precio) {
+    if (intervalosGanancia[precio]) return;
+
+    function ganar() {
+      if (inversionesCompradas[precio] > 0) {
+        const ganancia = Math.floor(precio * 0.1) * inversionesCompradas[precio];
+        dinero += ganancia;
+        guardarDatos();
+        actualizarInfo();
+      }
+      const espera = Math.floor(Math.random() * 3000) + 3000;
+      intervalosGanancia[precio] = setTimeout(ganar, espera);
+    }
+    ganar();
+  }
+
+  function iniciarTodasGanancias() {
+    inversiones.forEach(inv => {
+      if (inversionesCompradas[inv.precio] > 0) {
+        iniciarGananciaPorInversion(inv.precio);
+      }
+    });
+  }
+</script>
+
+</body>
+</html>
